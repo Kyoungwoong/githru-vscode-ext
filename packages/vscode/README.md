@@ -32,10 +32,6 @@ This extension contributes the following settings:
 Calling out known issues can help limit users opening duplicate issues against your extension. -->
 
 ## Release Notes
-### 0.8.0
-- Improve UI, performance
-- Fix minor bugs
-
 ### 0.7.2
 - Show TAG information
 - Update internal frameworks

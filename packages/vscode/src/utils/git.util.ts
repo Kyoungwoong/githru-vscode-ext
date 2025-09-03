@@ -1,10 +1,8 @@
 import * as cp from "child_process";
 import * as fs from "fs";
+import os from "os";
 import * as path from "path";
-
-import { GIT_LOG_FORMAT } from "./gitConstants";
-import { formatGitError } from "./gitErrorHandler";
-import { GitParallelWorkerManager } from "./gitParallel";
+import { Worker } from "worker_threads";
 
 export interface GitExecutable {
   readonly path: string;
@@ -132,17 +130,16 @@ function isExecutable(path: string) {
 export function getGitExecutable(path: string) {
   return new Promise<GitExecutable>((resolve, reject) => {
     resolveSpawnOutput(cp.spawn(path, ["--version"])).then((values) => {
-      const [status, stdout, stderr] = values;
-      if (status.code === 0 && !status.error) {
+      if (values[0].code === 0) {
         resolve({
           path: path,
-          version: stdout
+          version: values[1]
             .toString()
             .trim()
             .replace(/^git version /, ""),
         });
       } else {
-        reject(formatGitError(status, stderr, [path, "--version"]));
+        reject();
       }
     });
   });
@@ -158,56 +155,112 @@ export async function getGitExecutableFromPaths(paths: string[]): Promise<GitExe
 }
 
 export async function getGitLog(gitPath: string, currentWorkspacePath: string): Promise<string> {
-  const args = [
-    "--no-pager",
-    "-c",
-    "core.quotepath=false",
-    "log",
-    "--all",
-    "--parents",
-    "--numstat",
-    "--date-order",
-    `--pretty=format:${GIT_LOG_FORMAT}`,
-    "--decorate",
-    "-c",
-  ];
+  return new Promise((resolve, reject) => {
+    const gitLogFormat =
+      "%n%n" +
+      [
+        "%H", // commit hash (id)
+        "%P", // parent hashes
+        "%D", // ref names (branches, tags)
+        "%an", // author name
+        "%ae", // author email
+        "%ad", // author date
+        "%cn", // committer name
+        "%ce", // committer email
+        "%cd", // committer date
+        "%w(0,0,4)%s", // commit message subject
+        "%b", // commit message body
+      ].join("%n");
+    const args = [
+      "--no-pager",
+      "log",
+      "--all",
+      "--parents",
+      "--numstat",
+      "--date-order",
+      `--pretty=format:${gitLogFormat}`,
+      "--decorate",
+      "-c",
+    ];
 
-  const [status, stdout, stderr] = await resolveSpawnOutput(
-    cp.spawn(gitPath, args, {
-      cwd: currentWorkspacePath,
-      env: Object.assign({}, process.env),
-    })
-  );
-
-  if (status.code !== 0 || status.error) {
-    throw formatGitError(status, stderr, [gitPath, ...args]);
-  }
-
-  return stdout.toString();
+    resolveSpawnOutput(
+      cp.spawn(gitPath, args, {
+        cwd: currentWorkspacePath,
+        env: Object.assign({}, process.env),
+      })
+    ).then((values) => {
+      const [status, stdout, stderr] = values;
+      if (status.code === 0) {
+        resolve(stdout.toString());
+      } else {
+        reject(stderr);
+      }
+    });
+  });
 }
 
 export async function getLogCount(gitPath: string, currentWorkspacePath: string): Promise<number> {
   const BASE_10 = 10;
-  const args = ["rev-list", "--count", "--all"];
+  return new Promise((resolve, reject) => {
+    const args = ["rev-list", "--count", "--all"];
 
-  const [status, stdout, stderr] = await resolveSpawnOutput(
-    cp.spawn(gitPath, args, {
-      cwd: currentWorkspacePath,
-      env: Object.assign({}, process.env),
-    })
-  );
+    resolveSpawnOutput(
+      cp.spawn(gitPath, args, {
+        cwd: currentWorkspacePath,
+        env: Object.assign({}, process.env),
+      })
+    ).then(([status, stdout, stderr]) => {
+      const { code, error } = status;
 
-  if (status.code !== 0 || status.error) {
-    throw formatGitError(status, stderr, [gitPath, ...args]);
-  }
-
-  return parseInt(stdout.toString().trim(), BASE_10);
+      if (code === 0 && !error) {
+        const commitCount = parseInt(stdout.toString().trim(), BASE_10);
+        resolve(commitCount);
+      } else {
+        reject(stderr);
+      }
+    });
+  });
 }
 
 export async function fetchGitLogInParallel(gitPath: string, currentWorkspacePath: string): Promise<string> {
+  const numCores = os.cpus().length;
+
   const totalCnt = await getLogCount(gitPath, currentWorkspacePath);
-  const workerManager = new GitParallelWorkerManager();
-  return workerManager.executeParallelGitLog(gitPath, currentWorkspacePath, totalCnt);
+  let numberOfThreads = 1;
+
+  const taskThreshold = 1000;
+  const coreCountThreshold = 4;
+
+  if (totalCnt > taskThreshold) {
+    if (numCores < coreCountThreshold) numberOfThreads = 2;
+    else numberOfThreads = 3;
+  }
+
+  const chunkSize = Math.ceil(totalCnt / numberOfThreads);
+  const promises: Promise<string>[] = [];
+
+  for (let i = 0; i < numberOfThreads; i++) {
+    const skipCount = i * chunkSize;
+    const limitCount = chunkSize;
+
+    const worker = new Worker(path.resolve(__dirname, "./worker.js"), {
+      workerData: {
+        gitPath,
+        currentWorkspacePath,
+        skipCount,
+        limitCount,
+      },
+    });
+
+    promises.push(
+      new Promise((resolve, reject) => {
+        worker.on("message", resolve);
+        worker.on("error", reject);
+      })
+    );
+  }
+
+  return Promise.all(promises).then((logs) => logs.join("\n"));
 }
 
 export async function getGitConfig(
@@ -215,50 +268,39 @@ export async function getGitConfig(
   currentWorkspacePath: string,
   remoteType: "origin" | "upstream"
 ): Promise<string> {
-  const args = ["config", "--get", `remote.${remoteType}.url`];
+  return new Promise((resolve, reject) => {
+    const args = ["config", "--get", `remote.${remoteType}.url`];
 
-  const [status, stdout, stderr] = await resolveSpawnOutput(
-    cp.spawn(gitPath, args, {
-      cwd: currentWorkspacePath,
-      env: Object.assign({}, process.env),
-    })
-  );
-
-  if (status.code !== 0 || status.error) {
-    throw formatGitError(status, stderr, [gitPath, ...args]);
-  }
-
-  return stdout.toString();
+    resolveSpawnOutput(
+      cp.spawn(gitPath, args, {
+        cwd: currentWorkspacePath,
+        env: Object.assign({}, process.env),
+      })
+    ).then((values) => {
+      const [status, stdout, stderr] = values;
+      if (status.code === 0) {
+        resolve(stdout.toString());
+      } else {
+        reject(stderr);
+      }
+    });
+  });
 }
 
 export const getRepo = (gitRemoteConfig: string) => {
-  const gitHubPattern =
-    /(?:https?|git)(?::\/\/(?:\w+@)?|@)(?:github\.com)(?:\/|:)(?:(?<owner>[^/]+?)\/(?<repo>[^/]+?))(?:\.git|\/)?$/m;
-  const azureDevOpsPattern =
-    /https:\/\/(?:\w+@)?dev\.azure\.com\/(?<owner>[^/]+?)\/(?<project>[^/]+?)\/_git\/(?<repo>[^/]+?)(?:\/)?$/m;
-  const patterns = [gitHubPattern, azureDevOpsPattern];
-
-  let gitRemote: { owner: string; repo: string } | null = null;
-
-  for (const pattern of patterns) {
-    const match = gitRemoteConfig.match(pattern);
-    if (!match?.groups) continue;
-
-    const { owner, repo } = match.groups;
-    if (owner && repo) {
-      const repoWithoutGit = repo.replace(/\.git$/, "");
-      gitRemote = { owner, repo: repoWithoutGit };
-      break;
-    }
-  }
-
+  const gitRemoteConfigPattern =
+    /(?:https?|git)(?::\/\/(?:\w+@)?|@)(?:github\.com)(?:\/|:)(?:(?<owner>[^/]+?)\/(?<repo>[^/.]+))(?:\.git|\/)?(\S*)$/m;
+  const gitRemote = gitRemoteConfig.match(gitRemoteConfigPattern)?.groups;
   if (!gitRemote) {
-    throw new Error(
-      `Invalid Git remote config format: "${gitRemoteConfig}". Expected format: [https?://|git@]github.com/owner/repo[.git] or https://organization@dev.azure.com/organization/project/_git/repository-name`
-    );
+    throw new Error("git remote config should be: [https?://|git@]${domain}/${owner}/${repo}.git");
   }
 
-  return gitRemote;
+  const { owner, repo } = gitRemote;
+  if (!owner || !repo) {
+    throw new Error("no owner/repo");
+  }
+
+  return { owner, repo };
 };
 
 export async function getBranches(
@@ -268,20 +310,17 @@ export async function getBranches(
   branchList: string[];
   head: string | null;
 }> {
-  const args = ["branch", "-a"];
   let head = null;
   const branchList = [];
 
   const [status, stdout, stderr] = await resolveSpawnOutput(
-    cp.spawn(path, args, {
+    cp.spawn(path, ["branch", "-a"], {
       cwd: repo,
       env: Object.assign({}, process.env),
     })
   );
 
-  if (status.code !== 0 || status.error) {
-    throw formatGitError(status, stderr, [path, ...args]);
-  }
+  if (status.code !== 0) throw stderr;
 
   const branches = stdout.toString().split(/\r\n|\r|\n/g);
   for (let branch of branches) {
@@ -308,18 +347,13 @@ export function getDefaultBranchName(branchList: string[]): string {
 }
 
 export async function getCurrentBranchName(path: string, repo: string): Promise<string> {
-  const args = ["branch", "--show-current"];
-
   const [status, stdout, stderr] = await resolveSpawnOutput(
-    cp.spawn(path, args, {
+    cp.spawn(path, ["branch", "--show-current"], {
       cwd: repo,
       env: Object.assign({}, process.env),
     })
   );
 
-  if (status.code !== 0 || status.error) {
-    throw formatGitError(status, stderr, [path, ...args]);
-  }
-
+  if (status.code !== 0) throw stderr;
   return stdout.toString().trim();
 }

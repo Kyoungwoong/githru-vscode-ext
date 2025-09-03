@@ -10,23 +10,33 @@ const FilteredAuthors = () => {
   const authSrcMap = usePreLoadAuthorImg();
   const selectedClusters = getInitData(selectedData);
 
-  // 2차원 authorNames를 평탄화하고 중복 제거
-  const uniqueAuthorNames = Array.from(
-    new Set(selectedClusters.flatMap((cluster) => cluster.summary.authorNames.flat()))
-  );
+  // 이미 선택된 사용자를 관리
+  const addedAuthors = new Set();
 
   return (
     <div className="filtered-authors">
       <p className="filtered-authors__label">Authors:</p>
       <div className="filtered-authors__author">
         {authSrcMap &&
-          uniqueAuthorNames.map((authorName) => (
-            <Author
-              key={authorName}
-              name={authorName}
-              src={authSrcMap[authorName]}
-            />
-          ))}
+          selectedClusters.map((selectedCluster) => {
+            return selectedCluster.summary.authorNames.map((authorArray: string[]) => {
+              return authorArray.map((authorName: string) => {
+                // 이미 추가된 사용자인지 확인 후 추가되지 않은 경우에만 추가하고 Set에 이름을 저장
+                if (!addedAuthors.has(authorName)) {
+                  addedAuthors.add(authorName);
+                  return (
+                    <Author
+                      key={authorName}
+                      name={authorName}
+                      src={authSrcMap[authorName]}
+                    />
+                  );
+                }
+                // 이미 추가된 사용자인 경우 null 반환
+                return null;
+              });
+            });
+          })}
       </div>
     </div>
   );

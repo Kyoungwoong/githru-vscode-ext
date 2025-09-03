@@ -7,17 +7,15 @@ import { sendUpdateThemeCommand } from "services";
 
 import { THEME_INFO } from "./ThemeSelector.const";
 import type { ThemeInfo } from "./ThemeSelector.type";
-import { useThemeStore } from "store/theme";
 
 type ThemeIconsProps = ThemeInfo[keyof ThemeInfo] & {
-  theme: string;
   onClick: () => void;
 };
 
-const ThemeIcons = ({ title, value, colors, theme, onClick }: ThemeIconsProps) => {
+const ThemeIcons = ({ title, value, colors, onClick }: ThemeIconsProps) => {
   return (
     <div
-      className={`theme-icon${theme === value ? "--selected" : ""}`}
+      className={`theme-icon${window.theme === value ? "--selected" : ""}`}
       onClick={onClick}
       role="presentation"
     >
@@ -36,15 +34,12 @@ const ThemeIcons = ({ title, value, colors, theme, onClick }: ThemeIconsProps) =
 };
 
 const ThemeSelector = () => {
-  const [isOpen, setIsOpen] = useState(false);
-
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const themeSelectorRef = useRef<HTMLDivElement>(null);
 
-  const { theme, setTheme } = useThemeStore();
-
   const handleTheme = (value: string) => {
-    setTheme(value);
     sendUpdateThemeCommand(value);
+    window.theme = value;
     document.documentElement.setAttribute("theme", value);
   };
 
@@ -61,8 +56,8 @@ const ThemeSelector = () => {
   }, []);
 
   useEffect(() => {
-    document.documentElement.setAttribute("theme", theme);
-  }, [theme]);
+    document.documentElement.setAttribute("theme", window.theme);
+  }, []);
 
   return (
     <div
@@ -80,13 +75,12 @@ const ThemeSelector = () => {
             />
           </div>
           <div className="theme-selector__list">
-            {Object.entries(THEME_INFO).map(([_, themeInfo]) => (
+            {Object.entries(THEME_INFO).map(([_, theme]) => (
               <ThemeIcons
-                key={themeInfo.value}
-                {...themeInfo}
-                theme={theme}
+                key={theme.value}
+                {...theme}
                 onClick={() => {
-                  handleTheme(themeInfo.value);
+                  handleTheme(theme.value);
                   setIsOpen(false);
                 }}
               />
