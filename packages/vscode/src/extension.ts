@@ -5,7 +5,7 @@ import { COMMAND_LAUNCH, COMMAND_LOGIN_WITH_GITHUB, COMMAND_RESET_GITHUB_AUTH } 
 import { Credentials } from "./credentials";
 import { GithubTokenUndefinedError, WorkspacePathUndefinedError } from "./errors/ExtensionError";
 import { deleteGithubToken, getGithubToken, setGithubToken } from "./setting-repository";
-import { mapClusterNodesFrom } from "./utils/csm.mapper";
+import { mapClusterNodesFrom } from "./utils/csmMapper";
 import {
   fetchGitLogInParallel,
   findGit,
@@ -15,7 +15,7 @@ import {
   getGitConfig,
   getGitLog,
   getRepo,
-} from "./utils/git.util";
+} from "./utils/gitUtil";
 import WebviewLoader from "./webview-loader";
 
 let myStatusBarItem: vscode.StatusBarItem;
@@ -82,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const fetchClusterNodes = async (baseBranchName = initialBaseBranchName) => {
         const gitLog = await getGitLog(gitPath, currentWorkspacePath);
         const { owner, repo: initialRepo } = getRepo(gitConfig);
-        const repo = initialRepo[0];
+        const repo = initialRepo;
         const engine = new AnalysisEngine({
           isDebugMode: true,
           gitLog,
