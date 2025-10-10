@@ -1,0 +1,40 @@
+{
+	"name": "githru-mcp-server1",
+	"version": "1.0.1",
+	"description": "",
+	"main": "index.js",
+	"module": "./src/index.ts",
+	"type": "module",
+	"scripts": {
+		"dev": "npx @smithery/cli dev",
+		"build": "npx tsc && copyfiles -u 1 \"src/resources/locales/**/*\" dist/ && copyfiles -u 1 \"src/html/**/*\" dist/",
+		"build:clean": "rimraf dist && npm run build",
+		"watch": "npx tsc -w"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@githru-vscode-ext/analysis-engine": "^0.7.2",
+		"@modelcontextprotocol/sdk": "^1.12.1",
+		"@octokit/rest": "^22.0.0",
+		"cors": "^2.8.5",
+		"d3": "^7.8.5",
+		"dayjs": "^1.11.18",
+		"express": "^5.1.0",
+		"puppeteer": "^21.0.0",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0",
+		"sharp": "^0.34.4",
+		"zod": "^3.25.76"
+	},
+	"devDependencies": {
+		"@smithery/cli": "^1.2.4",
+		"@types/d3": "^7.4.3",
+		"@types/react": "^18.2.0",
+		"@types/react-dom": "^18.2.0",
+		"copyfiles": "^2.4.1",
+		"rimraf": "^6.0.1",
+		"tsx": "^4.19.4"
+	}
+}
