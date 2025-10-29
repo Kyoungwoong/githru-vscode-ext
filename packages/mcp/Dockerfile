@@ -1,21 +1,21 @@
-# packages/mcp/Dockerfile
 FROM node:18-alpine
 
-# install git
+# Install git
 RUN apk add --no-cache git
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first (for better Docker layer caching)
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies (both prod and dev for build step)
+RUN npm ci
 
-# Copy application code
+# Copy source code
 COPY . .
 
-# Build the application
+# Build the application (requires devDependencies: copyfiles, typescript)
 RUN npm run build
 
-CMD ["node", "dist/index.js"]
+# Run the server
+CMD ["node", "dist/server.js"]
