@@ -57,14 +57,14 @@ export class ContributorRecommender {
     const prNumber = parseInt(String(this.pr!));
 
     try {
-      const prFiles = await this.octokit.paginate(this.octokit.pulls.listFiles, {
+      const prFiles = await this.octokit.paginate(this.octokit.rest.pulls.listFiles, {
         owner: this.owner,
         repo: this.repo,
         pull_number: prNumber,
         per_page: 100,
       });
 
-      const changedFiles = prFiles.map((file: PullRequestFile) => file.filename);
+      const changedFiles = (prFiles as PullRequestFile[]).map((file: PullRequestFile) => file.filename);
       return this.analyzeFileContributors(changedFiles);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -80,7 +80,7 @@ export class ContributorRecommender {
 
     for (const path of this.paths) {
       try {
-        const commits = await this.octokit.paginate(this.octokit.repos.listCommits, {
+        const commits = await this.octokit.paginate(this.octokit.rest.repos.listCommits, {
           owner: this.owner,
           repo: this.repo,
           path,
@@ -155,7 +155,7 @@ export class ContributorRecommender {
 
     for (const file of files.slice(0, 10)) {
       try {
-        const commits = await this.octokit.paginate(this.octokit.repos.listCommits, {
+        const commits = await this.octokit.paginate(this.octokit.rest.repos.listCommits, {
           owner: this.owner,
           repo: this.repo,
           path: file,

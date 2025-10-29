@@ -1,4 +1,4 @@
-import { CommitNode, CSMDictionary } from "../common/types";
+import { CommitNode, CSMDictionary } from "../common/types.js";
 
 export type CSMData = CSMDictionary;
 

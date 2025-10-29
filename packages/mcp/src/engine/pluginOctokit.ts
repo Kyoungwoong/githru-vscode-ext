@@ -18,7 +18,7 @@ export class PluginOctokit {
     this.octokit = new Octokit({
       ...props.options,
       throttle: {
-        onRateLimit: (retryAfter: number, options: any) => {
+        onRateLimit: ((retryAfter: number, options: any) => {
           const method = options?.method || '';
           const url = options?.url || '';
           const retryCount = options?.request?.retryCount || 0;
@@ -29,12 +29,12 @@ export class PluginOctokit {
             return true;
           }
           return false;
-        },
-        onAbuseLimit: (retryAfter: number, options: any) => {
+        }) as any,
+        onAbuseLimit: ((retryAfter: number, options: any) => {
           const method = options?.method || '';
           const url = options?.url || '';
           throw new Error(`[E] - abuse detected for request ${method} ${url} ${retryAfter}`);
-        },
+        }) as any,
       },
     })
 

@@ -72,7 +72,7 @@ export function groupCommitsByReleaseTags(clusterNodeList: ClusterNode[]): Relea
           insertions: commitRaw.differenceStatistic.totalInsertionCount,
           deletions: commitRaw.differenceStatistic.totalDeletionCount,
           files: Object.fromEntries(
-            Object.entries(commitRaw.differenceStatistic.fileDictionary).map(([path, stats]) => [
+            Object.entries(commitRaw.differenceStatistic.fileDictionary).map(([path, stats]: [string, any]) => [
               path,
               {
                 insertions: stats.insertionCount,
