@@ -11,3 +11,9 @@ startCommand:
 build:
   dockerfile: "Dockerfile"
   dockerBuildPath: "."
+env:
+  NODE_ENV: "production"
+  DEBUG: "true"
+  LOG_LEVEL: "info"
+  GITHRU_LOCALES_DIR: "packages/mcp/dist/resources/locales"
+  GITHRU_TEMPLATES_DIR: "packages/mcp/dis/html"
