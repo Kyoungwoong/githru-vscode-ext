@@ -18,16 +18,10 @@ export class PluginOctokit {
     this.octokit = new Octokit({
       ...props.options,
       throttle: {
-        onRateLimit: (retryAfter: any, options: { method: string; url: string; request: { retryCount: number; }; }) => {
-          const {
-            method,
-            url,
-            request: { retryCount },
-          } = options as {
-            method: string;
-            url: string;
-            request: { retryCount: number };
-          };
+        onRateLimit: (retryAfter: number, options: any) => {
+          const method = options?.method || '';
+          const url = options?.url || '';
+          const retryCount = options?.request?.retryCount || 0;
           console.log(`[L] - request quota exhausted for request ${method} ${url}`);
 
           if (retryCount <= 1) {
@@ -36,8 +30,9 @@ export class PluginOctokit {
           }
           return false;
         },
-        onAbuseLimit: (retryAfter: any, options: { method: string; url: string; }) => {
-          const { method, url } = options as { method: string; url: string };
+        onAbuseLimit: (retryAfter: number, options: any) => {
+          const method = options?.method || '';
+          const url = options?.url || '';
           throw new Error(`[E] - abuse detected for request ${method} ${url} ${retryAfter}`);
         },
       },

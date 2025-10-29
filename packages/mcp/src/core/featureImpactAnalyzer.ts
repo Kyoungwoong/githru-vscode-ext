@@ -88,13 +88,13 @@ export class McpReportGenerator {
 
   private async _getGitDataForPR(owner: string, repo: string, prNumber: number) {
     const [commits, files] = await Promise.all([
-      this.octokit.paginate(this.octokit.pulls.listCommits, {
+      this.octokit.paginate(this.octokit.rest.pulls.listCommits, {
         owner,
         repo,
         pull_number: prNumber,
         per_page: 100,
       }),
-      this.octokit.paginate(this.octokit.pulls.listFiles, {
+      this.octokit.paginate(this.octokit.rest.pulls.listFiles, {
         owner,
         repo,
         pull_number: prNumber,
