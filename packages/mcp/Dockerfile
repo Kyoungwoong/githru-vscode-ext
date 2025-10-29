@@ -1,5 +1,5 @@
 # packages/mcp/Dockerfile
-FROM node:22-alpine
+FROM node:18-alpine
 
 # install git
 RUN apk add --no-cache git

@@ -1,3 +1,13 @@
-runtime: docker
+runtime: "container"
+startCommand:
+  type: "http"
+  configSchema:
+    type: "object"
+    properties:
+      apiKey:
+        type: "string"
+        description: "37cbb8ab-00d1-4a41-a6c7-96a913ad1209"
+    required: ["apiKey"]
 build:
-  dockerfile: Dockerfile
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
