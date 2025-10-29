@@ -1,4 +1,4 @@
-import type { CommitRaw, CommitNode, CSMNode, CSMDictionary } from '@githru-vscode-ext/analysis-engine/dist/types';
+import { CommitNode, CSMDictionary } from "../common/types";
 
 export type CSMData = CSMDictionary;
 
