@@ -88,13 +88,13 @@ export class McpReportGenerator {
 
   private async _getGitDataForPR(owner: string, repo: string, prNumber: number) {
     const [commits, files] = await Promise.all([
-      this.octokit.paginate(this.octokit.pulls.listCommits, {
+      this.octokit.paginate(this.octokit.rest.pulls.listCommits, {
         owner,
         repo,
         pull_number: prNumber,
         per_page: 100,
       }),
-      this.octokit.paginate(this.octokit.pulls.listFiles, {
+      this.octokit.paginate(this.octokit.rest.pulls.listFiles, {
         owner,
         repo,
         pull_number: prNumber,
@@ -102,9 +102,9 @@ export class McpReportGenerator {
       }),
     ]);
 
-    const prFilesAll = files.map((f) => f.filename);
+    const prFilesAll: string[] = (files as any[]).map((f: any) => f.filename);
 
-    const commitsSimplified = commits.map((c) => ({
+    const commitsSimplified = (commits as any[]).map((c: any) => ({
       sha: c.sha,
       message: c.commit.message,
       authorDate: c.commit.author?.date ?? c.commit.committer?.date ?? "",
